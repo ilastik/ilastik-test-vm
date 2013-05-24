@@ -71,7 +71,7 @@ sudo apt-get install -y libtiff4-dev
 sudo apt-get install -y libpng12-dev
 sudo apt-get install -y libfftw3-dev
 sudo apt-get install -y libhdf5-serial-dev
-sudo apt-get install -y qt4-dev
+sudo apt-get install -y libqt4-dev
 sudo apt-get install -y libicu48
 sudo apt-get install -y python-qt4 python-qt4-dev python-sip python-sip-dev
 ln -s /usr/lib/python2.7/dist-packages/PyQt4/ $VIRTUAL_ENV/lib/python2.7/site-packages/
