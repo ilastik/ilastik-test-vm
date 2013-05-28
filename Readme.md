@@ -13,7 +13,7 @@ Prerequisites
 
 - Install [VirtualBox](http://www.virtualbox.org/wiki/Downloads)
 - Install [vagrant](http://downloads.vagrantup.com/) (You might be able to install vagrant via a package manager like `apt-get`, but make sure you get at least v1.1)
-- You need an X11 terminal.
+- You need an X11 server.
  * On Linux, this is built-in.
  * On Mac, the X11.app that ships with OS X will suffice.
  * On Windows, the process is [a little more complicated](https://cc.jlab.org/windows/X11onWindows).
@@ -52,7 +52,6 @@ Troubleshooting
 ---------------
 
 If that fails, you may need to enable X11 forwarding on your host OS.  For example, on Ubuntu, check the settings in `/etc/ssh/ssh_config`.
-On Mac OS X, remember to use X11.app terminal, Terminal.app.
 If X11 forwarding is enabled, you should be able to launch simple X11 apps.
 
 For example:
@@ -79,6 +78,21 @@ To play back your test case, use the `--playback_script` parameter:
 To include your new test case in the ilastik regression test suite, be sure to `commit` and `push` it back up to the main ilastik repo!
 If your test case exhibits a bug in ilastik that you want to share with the development team, you can open an issue in the ilastik [github issue tracker](http://github.com/ilastik/ilastik/issues).
 Instead of pasting your recording directly into a github issue, use [pastebin.com] or [gist.github.com] and link to your recording in the issue text.
+
+Recording tips
+--------------
+
+The recording system relies on QObject.objectName() to locate widgets within the widget hierarchy.
+For the most part, you don't need to know or worry about the details here.
+However, you must make sure that any top-level widgets you create (e.g. custom dialogs) have unique names.
+If you fail to do this, you may have trouble playing back test cases involving your dialog.
+
+For example:
+
+    class MyDialog(QDialog):
+        def __init__(parent):
+            QDialog.__init__(parent)
+            self.setObjectName("MyUniqueName")
 
 Suspending the VM
 =================
@@ -118,3 +132,4 @@ Travis-CI compatibility
 
 The ilastik-test-vm is designed mimic the environment provided by Travis-CI.
 If your test involves hard-coded paths to files in `/home/vagrant`, use the symlink `/home/travis` instead.
+
