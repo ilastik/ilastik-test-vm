@@ -48,8 +48,8 @@ EOF
 
 # Setup python virtualenv
 sudo apt-get install -y python-virtualenv
-mkdir virtualenv
-mkdir virtualenv/python2.7
+mkdir -p virtualenv
+mkdir -p virtualenv/python2.7
 virtualenv virtualenv/python2.7
 
 # Activate the virtualenv
@@ -104,7 +104,7 @@ echo "Building drtile"
 sudo sh .travis_scripts/build_drtile.sh $VIRTUAL_ENV /home/vagrant/lazyflow
 
 echo "Configuring lazyflow"
-mkdir ~/.lazyflow
+mkdir -p ~/.lazyflow
 echo "[verbosity]" > ~/.lazyflow/config
 echo "deprecation_warnings = false" >> ~/.lazyflow/config
 
