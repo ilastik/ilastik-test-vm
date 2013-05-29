@@ -82,7 +82,13 @@ Instead of pasting your recording directly into a github issue, use [pastebin.co
 Recording tips
 --------------
 
+Explain what you're doing using using the comments box in the recorder UI.
+It will be much easier to see what's going wrong when your test case fails some day.
+
 Don't interfere with tests during playback.  Stray mouse movements, etc. can still affect the app during playback.
+
+Hopefully all of our X11 servers use the same font settings by default.  If your X11 server uses a different font size, 
+then the test cases you get from other people may not pass on your machine.  (Some mouse clicks will miss their targets.)
 
 Avoid relying on details that may not be consistent between test runs.
 For example, it is usually best to select your test data by typing the path into the file browser dialog (don't use the mouse).
