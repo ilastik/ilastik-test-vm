@@ -82,6 +82,13 @@ Instead of pasting your recording directly into a github issue, use [pastebin.co
 Recording tips
 --------------
 
+Don't interfere with tests during playback.  Stray mouse movements, etc. can still affect the app during playback.
+
+Avoid relying on details that may not be consistent between test runs.
+For example, it is usually best to select your test data by typing the path into the file browser dialog (don't use the mouse).
+If the playback environment's file browser doesn't start in the same directory you started in when you recorded the test, 
+then your mouse clicks won't mean the same thing!
+
 The recording system relies on QObject.objectName() to locate widgets within the widget hierarchy.
 For the most part, you don't need to know or worry about the details here.
 However, you must make sure that any top-level widgets you create (e.g. custom dialogs) have unique names.
