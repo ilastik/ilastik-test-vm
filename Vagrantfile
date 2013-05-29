@@ -108,7 +108,10 @@ mkdir -p ~/.lazyflow
 echo "[verbosity]" > ~/.lazyflow/config
 echo "deprecation_warnings = false" >> ~/.lazyflow/config
 
-echo "Generating test data"
+echo "Downloading real-world test data"
+git clone http://github.com/ilastik/ilastik_testdata /tmp/real_test_data
+
+echo "Generating synthetic test data"
 python /home/vagrant/ilastik/tests/bin/generate_test_data.py /tmp/test_data
 
 echo "PROVISION SCRIPT DONE"
