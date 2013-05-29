@@ -98,11 +98,13 @@ chown -R vagrant /home/vagrant/lazyflow
 
 # Set up python on login
 echo 'export PYTHONPATH=/home/vagrant/lazyflow:/home/vagrant/volumina:$PYTHONPATH' >> /home/vagrant/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/lib' >> /home/vagrant/.bashrc
 echo 'source /home/vagrant/virtualenv/python2.7/bin/activate' >> /home/vagrant/.bashrc
 
 echo "Building drtile"
 sudo sh .travis_scripts/build_drtile.sh $VIRTUAL_ENV /home/vagrant/lazyflow
 
+echo "Building drtile"
 echo "Configuring lazyflow"
 mkdir -p ~/.lazyflow
 echo "[verbosity]" > ~/.lazyflow/config
@@ -110,6 +112,9 @@ echo "deprecation_warnings = false" >> ~/.lazyflow/config
 
 echo "Downloading real-world test data"
 git clone http://github.com/ilastik/ilastik_testdata /tmp/real_test_data
+
+# Needed to use vigra in the python script(s) below
+export LD_LIBRARY_PATH=/usr/local/lib
 
 echo "Generating synthetic test data"
 python /home/vagrant/ilastik/tests/bin/generate_test_data.py /tmp/test_data
