@@ -96,7 +96,7 @@ echo "Installing LEMON"
 sudo sh .travis_scripts/install_lemon.sh
 
 echo "Installing CYLEMON"
-sudo sh .travis_scripts/install_cylemon.sh
+sudo sh .travis_scripts/install_cylemon.sh $VIRTUAL_ENV
 
 echo "Cloning volumina/lazyflow"
 rm -rf /home/vagrant/volumina /home/vagrant/lazyflow 2> /dev/null
