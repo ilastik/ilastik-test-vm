@@ -80,6 +80,9 @@ ln -s /usr/lib/python2.7/dist-packages/sipdistutils.py $VIRTUAL_ENV/lib/python2.
 ln -s /usr/lib/python2.7/dist-packages/sipconfig.py $VIRTUAL_ENV/lib/python2.7/site-packages/
 ln -s /usr/lib/python2.7/dist-packages/sipconfig_nd.py $VIRTUAL_ENV/lib/python2.7/site-packages/
 
+#Cython is needed for cylemon (carving workflow)
+sudo easy_install cython
+
 echo "Installing development stage 1"
 pip install -r requirements/development-stage1.txt --use-mirrors
 
@@ -88,6 +91,12 @@ pip install -r requirements/development-stage2.txt --use-mirrors
 
 echo "Installing VIGRA"
 sudo sh .travis_scripts/install_vigra.sh $VIRTUAL_ENV
+
+echo "Installing LEMON"
+sudo sh .travis_scripts/install_lemon.sh
+
+echo "Installing CYLEMON"
+sudo sh .travis_scripts/install_cylemon.sh
 
 echo "Cloning volumina/lazyflow"
 rm -rf /home/vagrant/volumina /home/vagrant/lazyflow 2> /dev/null
