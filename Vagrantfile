@@ -5,18 +5,22 @@
 # and has some python virtualenvs installed.
 # We need to create a similar environment.
 $provision_script = <<ENDSCRIPT
-echo "PROVISION SCRIPT STARTING"
+echo "PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
+
+#
+# the following section runs as user 'root'
+#
 
 # To allow us to use the same paths as travis, make a link to /home/travis
-sudo ln -s /home/vagrant /home/travis
+ln -s /home/vagrant /home/travis
 
-sudo apt-get update
+apt-get update
 
-sudo apt-get install -y make
-sudo apt-get install -y cmake
-sudo apt-get install -y git
-sudo apt-get install -y mercurial
-sudo apt-get install -y xvfb
+apt-get install -y make
+apt-get install -y cmake
+apt-get install -y git
+apt-get install -y mercurial
+apt-get install -y xvfb
 
 # Create xvfb launch script (copied from the Travis 32-bit VM)
 cat <<EOF > /etc/init.d/xvfb
@@ -47,7 +51,13 @@ exit 0
 EOF
 
 # Setup python virtualenv
-sudo apt-get install -y python-virtualenv
+apt-get install -y python-virtualenv
+
+#
+# change to vagrant user
+#
+su --login vagrant
+
 mkdir -p virtualenv
 mkdir -p virtualenv/python2.7
 virtualenv virtualenv/python2.7
@@ -81,7 +91,7 @@ ln -s /usr/lib/python2.7/dist-packages/sipconfig.py $VIRTUAL_ENV/lib/python2.7/s
 ln -s /usr/lib/python2.7/dist-packages/sipconfig_nd.py $VIRTUAL_ENV/lib/python2.7/site-packages/
 
 #Cython is needed for cylemon (carving workflow)
-sudo easy_install cython
+easy_install cython
 
 echo "Installing development stage 1"
 pip install -r requirements/development-stage1.txt --use-mirrors
@@ -96,14 +106,13 @@ echo "Installing LEMON"
 sudo sh .travis_scripts/install_lemon.sh
 
 echo "Installing CYLEMON"
-sudo sh .travis_scripts/install_cylemon.sh $VIRTUAL_ENV
+#note that we do not need sudo here
+/bin/bash .travis_scripts/install_cylemon.sh $VIRTUAL_ENV
 
 echo "Cloning volumina/lazyflow"
 rm -rf /home/vagrant/volumina /home/vagrant/lazyflow 2> /dev/null
 git clone http://github.com/ilastik/volumina /home/vagrant/volumina
 git clone http://github.com/ilastik/lazyflow /home/vagrant/lazyflow
-chown -R vagrant /home/vagrant/volumina
-chown -R vagrant /home/vagrant/lazyflow
 
 # Set up python on login
 echo 'export PYTHONPATH=/home/vagrant/lazyflow:/home/vagrant/volumina:$PYTHONPATH' >> /home/vagrant/.bashrc
