@@ -16,8 +16,15 @@ apt-get install -y cmake
 apt-get install -y git
 apt-get install -y mercurial
 
+# Hudson compatibility
 # Java is needed so this VM can run as a hudson slave
 apt-get install -y openjdk-7-jre
+
+# Create a workspace for Hudson to use
+# (In Hudson, provide this path as the node's "Remote FS root")
+HUDSON_REMOTE_FS_ROOT=/var/hudson
+mkdir -p $HUDSON_REMOTE_FS_ROOT
+chmod 777 $HUDSON_REMOTE_FS_ROOT
 
 # XVFB allows us to run GUI tests in a virtual screen
 apt-get install -y xvfb
