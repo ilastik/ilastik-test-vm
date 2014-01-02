@@ -1,9 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# The travis VM image has a user named 'travis'
-# and has some python virtualenvs installed.
-# We need to create a similar environment.
 $provision_script = <<ENDSCRIPT
 echo "PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
 
@@ -11,19 +8,22 @@ echo "PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
 # the following section runs as user 'root'
 #
 
-# To allow us to use the same paths as travis, make a link to /home/travis
-ln -s /home/vagrant /home/travis
-
 apt-get update
 
+# BuildEM dependencies
 apt-get install -y make
 apt-get install -y cmake
 apt-get install -y git
 apt-get install -y mercurial
+
+# Java is needed so this VM can run as a hudson slave
+apt-get install -y openjdk-7-jre
+
+# XVFB allows us to run GUI tests in a virtual screen
 apt-get install -y xvfb
 
 # Create xvfb launch script (copied from the Travis 32-bit VM)
-cat <<EOF > /etc/init.d/xvfb
+cat <<END_XVFB_LAUNCH > /etc/init.d/xvfb
 XVFB=/usr/bin/Xvfb
 XVFBARGS=":99 -ac -screen 0 1024x768x16"
 PIDFILE=/tmp/cucumber_xvfb_99.pid
@@ -48,93 +48,52 @@ case "\\$1" in
   exit 1
 esac
 exit 0
-EOF
-
-# Setup python virtualenv
-apt-get install -y python-virtualenv
+END_XVFB_LAUNCH
 
 #
 # change to vagrant user
 #
 su --login vagrant
 
-mkdir -p virtualenv
-mkdir -p virtualenv/python2.7
-virtualenv virtualenv/python2.7
+# Set up the build directory, but don't build
+mkdir -p ilastik-build
+cd ilastik-build
+BUILDEM_DIR=`pwd`
+git clone https://github.com/ilastik/ilastik-build-Linux.git || (cd ilastik-build-Linux && git pull && cd -)
+mkdir -p build
+cd build
 
-# Activate the virtualenv
-source virtualenv/python2.7/bin/activate
+#
+# Build script
+#
+cat <<END_BUILD_SCRIPT > build_ilastik.sh
+#!/bin/bash
+cd $BUILDEM_DIR/build
+cmake ../ilastik-build-Linux -DBUILDEM_DIR=$BUILDEM_DIR
+make
+# make package
+END_BUILD_SCRIPT
 
-echo "Using python: " `which python` "and pip: " `which pip`
+#
+# Update script
+#
 
-# Clone latest ilastik and cd into it.
-# All subsequent steps are performed WITHIN ilastik dir.
-rm -rf /home/travis/ilastik 2> /dev/null
-git clone http://github.com/ilastik/ilastik /home/travis/ilastik
-chown -R vagrant /home/travis/ilastik
-cd /home/travis/ilastik
+#
+# Test script: lazyflow
+#
+cat <<END_LAZYFLOW_TEST_SCRIPT > run_lazyflow_tests.sh
+#!/bin/bash
+echo TODO...
+END_LAZYFLOW_TEST_SCRIPT
 
-# Install dependencies
-sudo apt-get install -y libboost-python-dev
-sudo apt-get install -y libjpeg-dev
-sudo apt-get install -y libtiff4-dev
-sudo apt-get install -y libpng12-dev
-sudo apt-get install -y libfftw3-dev
-sudo apt-get install -y libhdf5-serial-dev
-sudo apt-get install -y libqt4-dev
-sudo apt-get install -y libicu48
-sudo apt-get install -y python-qt4 python-qt4-dev python-sip python-sip-dev
-ln -s /usr/lib/python2.7/dist-packages/PyQt4/ $VIRTUAL_ENV/lib/python2.7/site-packages/
-ln -s /usr/lib/python2.7/dist-packages/sip.so $VIRTUAL_ENV/lib/python2.7/site-packages/
-ln -s /usr/lib/python2.7/dist-packages/sipdistutils.py $VIRTUAL_ENV/lib/python2.7/site-packages/
-ln -s /usr/lib/python2.7/dist-packages/sipconfig.py $VIRTUAL_ENV/lib/python2.7/site-packages/
-ln -s /usr/lib/python2.7/dist-packages/sipconfig_nd.py $VIRTUAL_ENV/lib/python2.7/site-packages/
 
-#Cython is needed for cylemon (carving workflow)
-easy_install cython
-
-echo "Installing development stage 1"
-pip install -r requirements/development-stage1.txt --use-mirrors
-
-echo "Installing development stage 2"
-pip install -r requirements/development-stage2.txt --use-mirrors
-
-echo "Installing VIGRA"
-sudo sh .travis_scripts/install_vigra.sh $VIRTUAL_ENV
-
-echo "Installing LEMON"
-sudo sh .travis_scripts/install_lemon.sh
-
-echo "Installing CYLEMON"
-#note that we do not need sudo here
-/bin/bash .travis_scripts/install_cylemon.sh $VIRTUAL_ENV
-
-echo "Cloning volumina/lazyflow"
-rm -rf /home/vagrant/volumina /home/vagrant/lazyflow 2> /dev/null
-git clone http://github.com/ilastik/volumina /home/vagrant/volumina
-git clone http://github.com/ilastik/lazyflow /home/vagrant/lazyflow
-cd /home/vagrant/lazyflow && git submodule init && git submodule update
-cd -
-
-# Set up python on login
-echo 'export PYTHONPATH=/home/vagrant/lazyflow:/home/vagrant/volumina:$PYTHONPATH' >> /home/vagrant/.bashrc
-echo 'export LD_LIBRARY_PATH=/usr/local/lib' >> /home/vagrant/.bashrc
-echo 'source /home/vagrant/virtualenv/python2.7/bin/activate' >> /home/vagrant/.bashrc
-
-echo "Building drtile"
-sudo sh .travis_scripts/build_drtile.sh $VIRTUAL_ENV /home/vagrant/lazyflow
-
-echo "Building drtile"
 echo "Configuring lazyflow"
 mkdir -p ~/.lazyflow
 echo "[verbosity]" > ~/.lazyflow/config
 echo "deprecation_warnings = false" >> ~/.lazyflow/config
 
 echo "Downloading real-world test data"
-git clone http://github.com/ilastik/ilastik_testdata /tmp/real_test_data
-
-# Needed to use vigra in the python script(s) below
-export LD_LIBRARY_PATH=/usr/local/lib
+git clone http://github.com/ilastik/ilastik_testdata /tmp/real_test_data || (cd /tmp/real_test_data && git pull && cd -)
 
 echo "Generating synthetic test data"
 python /home/vagrant/ilastik/tests/bin/generate_test_data.py /tmp/test_data
