@@ -113,6 +113,8 @@ echo "Cloning volumina/lazyflow"
 rm -rf /home/vagrant/volumina /home/vagrant/lazyflow 2> /dev/null
 git clone http://github.com/ilastik/volumina /home/vagrant/volumina
 git clone http://github.com/ilastik/lazyflow /home/vagrant/lazyflow
+cd /home/vagrant/lazyflow && git submodule init && git submodule update
+cd -
 
 # Set up python on login
 echo 'export PYTHONPATH=/home/vagrant/lazyflow:/home/vagrant/volumina:$PYTHONPATH' >> /home/vagrant/.bashrc
@@ -170,6 +172,7 @@ Vagrant.configure("2") do |config|
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
   # config.vm.network :forwarded_port, guest: 80, host: 8080
+  # config.vm.network :forwarded_port, guest: 22, host: 8022
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
@@ -178,6 +181,6 @@ Vagrant.configure("2") do |config|
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
   # your network.
-  # config.vm.network :public_network
+  # config.vm.network :public_network, :bridge => 'eth0'
 
 end
