@@ -1,8 +1,13 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-$provision_script = <<ENDSCRIPT
-echo "PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
+###################################################################
+###################################################################
+# Root provisioning
+###################################################################
+###################################################################
+$root_provision_script = <<END_ROOT_PROVISIONING
+echo "ROOT PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
 
 #
 # the following section runs as user 'root'
@@ -15,6 +20,16 @@ apt-get install -y make
 apt-get install -y cmake
 apt-get install -y git
 apt-get install -y mercurial
+apt-get install -y build-essential
+apt-get install -y gfortran
+
+# Dependencies of ilastik not included in BuildEM
+# (See BuildEM readme.)
+apt-get install -y libxext-dev
+apt-get install -y libgl1-mesa-dev
+apt-get install -y libxt-dev
+apt-get install -y libxml2-dev
+apt-get install -y libfontconfig1-dev # Required to build qt4
 
 # Hudson compatibility
 # Java is needed so this VM can run as a hudson slave
@@ -56,45 +71,29 @@ case "\\$1" in
 esac
 exit 0
 END_XVFB_LAUNCH
+echo "ROOT PROVISION SCRIPT DONE"
+END_ROOT_PROVISIONING
+###################################################################
+###################################################################
 
-#
-# change to vagrant user
-#
-su --login vagrant
 
+###################################################################
+###################################################################
+# Non-root provisioning #
+###################################################################
+###################################################################
+$nonroot_provision_script = <<END_NONROOT_PROVISIONING
+echo "NONROOT PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
 # Set up the build directory, but don't build
+cd /home/vagrant
 mkdir -p ilastik-build
 cd ilastik-build
 BUILDEM_DIR=`pwd`
 git clone https://github.com/ilastik/ilastik-build-Linux.git || (cd ilastik-build-Linux && git pull && cd -)
 mkdir -p build
-cd build
+cd /home/vagrant
 
-#
-# Build script
-#
-cat <<END_BUILD_SCRIPT > build_ilastik.sh
-#!/bin/bash
-cd $BUILDEM_DIR/build
-cmake ../ilastik-build-Linux -DBUILDEM_DIR=$BUILDEM_DIR
-make
-# make package
-END_BUILD_SCRIPT
-
-#
-# Update script
-#
-
-#
-# Test script: lazyflow
-#
-cat <<END_LAZYFLOW_TEST_SCRIPT > run_lazyflow_tests.sh
-#!/bin/bash
-echo TODO...
-END_LAZYFLOW_TEST_SCRIPT
-
-
-echo "Configuring lazyflow"
+echo "Writing lazyflow config file"
 mkdir -p ~/.lazyflow
 echo "[verbosity]" > ~/.lazyflow/config
 echo "deprecation_warnings = false" >> ~/.lazyflow/config
@@ -102,17 +101,82 @@ echo "deprecation_warnings = false" >> ~/.lazyflow/config
 echo "Downloading real-world test data"
 git clone http://github.com/ilastik/ilastik_testdata /tmp/real_test_data || (cd /tmp/real_test_data && git pull && cd -)
 
+################
+# Build script #
+################
+cat <<END_BUILD_SCRIPT > build_ilastik.sh
+#!/bin/bash
+set -e
+cd $BUILDEM_DIR/build
+cmake ../ilastik-build-Linux -DBUILDEM_DIR=$BUILDEM_DIR
+make -j4
+# make package
+END_BUILD_SCRIPT
+################
+
+#################
+### All Tests ###
+#################
+cat <<END_TEST_SCRIPT > run_all_ilastik_tests.sh
+#!/bin/bash
+
+if [[ "\\$1" == "--use-xvfb" ]]
+then
+    echo "Using X Virtual Frame Buffer for GUI tests."
+    echo 'type "sh -e /etc/init.d/xvfb stop" to disable.'
+    export DISPLAY=:99.0
+    sh -e /etc/init.d/xvfb start
+fi
+
+# Set up env
+export BUILDEM_DIR=$BUILDEM_DIR
+source \\$BUILDEM_DIR/bin/setenv_ilastik_gui.sh
+export PATH=\\$BUILDEM_DIR/bin:\\$PATH
+
+# Update repo to latest checkpoint
+# (This updates lazyflow, volumina, and ilastik)
+cd \\$BUILDEM_DIR/src/ilastik
+git pull origin master
+git submodule update --init --recursive
+
+# Run tests
+echo "Running lazyflow tests...."
+cd lazyflow/tests
+nosetests .
+cd -
+
+echo "Running volumina tests...."
+cd volumina/tests
+nosetests .
+cd -
+
 echo "Generating synthetic test data"
-python /home/vagrant/ilastik/tests/bin/generate_test_data.py /tmp/test_data
+python ilastik/tests/bin/generate_test_data.py /tmp/test_data
 
-echo "PROVISION SCRIPT DONE"
-ENDSCRIPT
+cd ilastik/tests
+echo "Running ilastik unit tests"
+./run_each_unit_test.sh
+echo "Running ilastik recorded GUI tests"
+./run_recorded_tests.sh
+cd ../..
+END_TEST_SCRIPT
+#################
 
+echo "NONROOT PROVISION SCRIPT DONE"
+END_NONROOT_PROVISIONING
+###################################################################
+###################################################################
+
+###################################################################
+## Vagrant Config
+###################################################################
 Vagrant.configure("2") do |config|
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "precise64"
-  config.vm.provision :shell, :inline => $provision_script
+  config.vm.box = "ilastikci"
+  config.vm.provision :shell, :inline => $root_provision_script
+  config.vm.provision :shell, :privileged => false, :inline => $nonroot_provision_script
   config.vm.box_url = "http://files.vagrantup.com/precise64.box"
+  config.vm.hostname = "ilastikci"
 
   # Enable x11 forwarding (as if using ssh -X)
   config.ssh.forward_x11 = true
@@ -122,8 +186,12 @@ Vagrant.configure("2") do |config|
     # Don't boot with headless mode
     #vb.gui = true
 
-     # Use VBoxManage to customize the VM. For example to change memory:
-     vb.customize ["modifyvm", :id, "--memory", "2048"]
+     # Use VBoxManage to customize the VM.
+     # For more options, check the help message for the VBoxManage command
+     vb.customize ["modifyvm", :id,
+     			   "--memory", "2048",
+     			   "--cpus", "4",
+     			   "--cpuexecutioncap", "100" ]
   end
 
   # ADDITIONAL OPTIONS:
@@ -138,7 +206,7 @@ Vagrant.configure("2") do |config|
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
   # config.vm.network :forwarded_port, guest: 80, host: 8080
-  # config.vm.network :forwarded_port, guest: 22, host: 8022
+  config.vm.network :forwarded_port, guest: 22, host: 8022
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
