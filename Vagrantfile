@@ -130,7 +130,7 @@ cat <<END_BUILD_SCRIPT > build_ilastik.sh
 #!/bin/bash
 set -e
 cd $BUILDEM_DIR/build
-cmake ../ilastik-build-Linux -DBUILDEM_DIR=$BUILDEM_DIR
+cmake ../ilastik-build-Linux -DBUILDEM_DIR=$BUILDEM_DIR -DILASTIK_VERSION=master
 make -j4
 # make package
 END_BUILD_SCRIPT
