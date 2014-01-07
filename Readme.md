@@ -1,22 +1,24 @@
+==============================
 ilastik Testing VM Environment
 ==============================
 
-The ilastik testing VM is a [vagrant](http://www.vagrantup.com)-provisioned [VirtualBox](http://www.virtualbox.org) VM image.
-It is designed to mimic* the VM images used by Travis-CI, so tests developed on the ilastik testing VM (gui tests in particular) 
-can be incorporated into ilastik's regression test suite, which is executed on Travis-CI. 
-
-*Note: Ideally, we would simply download the same VM image that Travis-CI uses to run our tests, but that apparently isn't available for download.
-Instead, we create our own "good-enough" facsimile.
+The ilastik testing VM is a [vagrant][]-provisioned [VirtualBox][] VM image.
+It is designed to provide a reproducible test environment for continuous integration testing.
+Furthermore, it provides a consistent environment for running *recorded* GUI regression tests.
+(See below.)
 
 Prerequisites
 =============
 
-- Install [VirtualBox](http://www.virtualbox.org/wiki/Downloads)
-- Install [vagrant](http://downloads.vagrantup.com/) (You might be able to install vagrant via a package manager like `apt-get`, but make sure you get at least v1.1)
+- Install [VirtualBox][]
+- Install [vagrant][] (You might be able to install vagrant via a package manager like `apt-get`, but make sure you get at least v1.4)
 - You need an X11 server.
  * On Linux, this is built-in.
  * On Mac, the X11.app that ships with OS X will suffice.
  * On Windows, the process is [a little more complicated](https://cc.jlab.org/windows/X11onWindows).
+
+[vagrant]: http://www.vagrantup.com
+[VirtualBox]: http://www.virtualbox.org
 
 Getting started
 ===============
@@ -33,36 +35,83 @@ Start the VM:
     vagrant up
 
 Running `vagrant up` for the first time will trigger the download of a bare-bones Ubuntu-12.04 `.box` file (300 MB or so).
-After the download is complete, it will be booted and "provisioned" with the ilastik testing setup according to the settings in the provided `Vagrantfile`.
-This is a lengthy process, as it involves installing several software packages, including numpy, h5py, pyqt, vigra, etc.
+After the download is complete, it will be booted and "provisioned".  The provisioning process does the following:
+
+* Uses `apt-get` to install build tools like cmake, git, etc.
+* Uses `apt-get` to install ilastik dependencies that BuildEM doesn't provide
+* Uses `apt-get` to install java (to allow the VM to be operated as a [Hudson][] slave if desired)
+* Installs a script to allow `xvfb` for GUI testing in a virtual frame buffer
+* Clones the [ilastik-build-Linux][] repo in `/home/vagrant/ilastik-build`
+* Clones the [ilastik_testdata][] repo, which can be used during regression tests
+* Writes, but does not execute, a script to build ilastik and all dependencies (`/home/vagrant/build_ilastik.sh`)
+* Writes, but does not execute, a script to run all tests in an ilastik build (including lazyflow and volumina unit tests)
+* Enables port-forwarding for ssh from host port 8022 to VM port 22
+* Enables X11 forwarding over ssh (like ssh -X)
+* Specifies how many CPUs to allocate to the VM (4 by default)
+
+After the first boot, the provision script will not be auto-executed during the `vagrant up` process.
+If you make changes to it, be sure to run it manually by running `vagrant provision` from the host machine.
+
+[ilastik-build-Linux]: http://github.com/ilastik/ilastik-build-Linux
+[ilastik_testdata]: http://github.com/ilastik/ilastik_testdata
+[Hudson]: http://hudson-ci.org
 
 Connect to the VM:
 ------------------
 
     vagrant ssh
 
-You are now logged in to the VM (user/pass: vagrant/vagrant).  Our `Vagrantfile` enabled X11 forwarding (`ssh -X`), so you should be able to launch X11-based GUI applications.
-Additionally, the `.bashrc` file activates the appropriate `virtualenv` and configures `$PYTHONPATH` for running ilastik.
-
-You should be able to run the following command immediately after connecting:
-
-    ./ilastik/ilastik.py
+You are now logged in to the VM (user/pass: vagrant/vagrant).  
 
 Troubleshooting
 ---------------
 
 If that fails, you may need to enable X11 forwarding on your host OS.  For example, on Ubuntu, check the settings in `/etc/ssh/ssh_config`.
-If X11 forwarding is enabled, you should be able to launch simple X11 apps.
+If X11 forwarding is enabled, you should be able to launch simple X11 apps from the VM.
 
 For example:
 
     sudo apt-get install x11-apps   # password: vagrant
     xclock
 
-Record a new test
-=================
+Build ilastik
+-------------
 
-The primary benefit of running ilastik from a virtual machine is that you can create GUI-based test cases to share with other developers.
+The script `/home/vagrant/build_ilastik.sh` is provided to checkout BuildEM and build ilastik and all its dependencies.
+The build is executed in parallel using `make -j4`, but it will take a long time to complete.
+
+**Note:**  Sometimes the build will fail due to a bad tarball download. (The md5 signature is checked for each dependency.)
+If you see the build stop for any reason, just resume it by re-executing `build_ilastik.sh`.
+
+Run ilastik
+-----------
+
+Once you've completed the full BuildEM build, ilastik can be executed from the VM:
+
+    # Log in to the VM
+    vagrant ssh
+    
+    # Activate the BuildEM binaries
+    source ilastik-build/bin/setenv_ilastik_gui.sh
+    
+    # Run ilastik
+    cd ilastik-build/src/ilastik
+    ./ilastik/ilastik.py    
+
+Run the unit/regression tests
+-----------------------------
+
+    vagrant ssh
+    bash run_all_ilastik_tests.sh
+
+Recorded GUI regression tests
+=============================
+
+One benefit of running ilastik from a virtual machine is that you can create GUI-based test cases to *share* with other developers.
+
+Record a new test
+-----------------
+
 To record an ilastik gui test case, use the `--start_recording` option:
 
     ./ilastik/ilastik.py --start_recording
@@ -126,23 +175,14 @@ To start it up again, use
 
     vagrant up
 
-Note: the `vagrant up` command always *re-provisions* the VM on bootup.  This means it will re-run the script that installs and configures your environment.
-But since you've already provisioned it once, this won't take as long as it did the first time (it won't need to reinstall qt, numpy, etc.).
-
 To ensure that you are using the latest version of ilastik, lazyflow, and volumina without power-cycling the VM, you can re-provision it with
 
     vagrant provision
 
-Note: `vagrant provision` (and therefore also `vagrant up`) will wipe away your VM's ilastik, lazyflow, and volumina repos.
-Be sure to push any changes (e.g. new test cases) before reprovisioning.    
+**Note:** When you *first create* your VM, `vagrant provision` checks out the build system and a default version of ilastik.
+On subsequent calls to `vagrant provision`, ilastik is not updated.  To update the ilastik source manually, see the git repo 
+(and submodules) in `/home/vagrant/ilastik-build/src/ilastik`.
 
 Finally, to delete your VM entirely and start from scratch, type
 
     vagrant destroy
-
-Travis-CI compatibility
-=======================
-
-The ilastik-test-vm is designed mimic the environment provided by Travis-CI.
-If your test involves hard-coded paths to files in `/home/vagrant`, use the symlink `/home/travis` instead.
-
