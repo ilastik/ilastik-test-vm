@@ -29,7 +29,17 @@ apt-get install -y libxext-dev
 apt-get install -y libgl1-mesa-dev
 apt-get install -y libxt-dev
 apt-get install -y libxml2-dev
-apt-get install -y libfontconfig1-dev # Required to build qt4
+
+# Since we'll use X11 for this VM, we must install these packages before building Qt.
+# See http://qt-project.org/doc/qt-4.8/requirements-x11.html
+# Note: Qt will *build* if some of these are omitted,
+#        but you will encounter bugs at runtime.
+apt-get install -y libfontconfig1-dev
+apt-get install -y libxfixes-dev
+apt-get install -y libxrender-dev
+apt-get install -y libxcursor-dev
+apt-get install -y libxrandr-dev
+apt-get install -y libxinerama-dev
 
 # Hudson compatibility
 # Java is needed so this VM can run as a hudson slave
@@ -89,9 +99,16 @@ cd /home/vagrant
 mkdir -p ilastik-build
 cd ilastik-build
 BUILDEM_DIR=`pwd`
-git clone https://github.com/ilastik/ilastik-build-Linux.git || (cd ilastik-build-Linux && git pull && cd -)
+if [ ! -d "$BUILDEM_DIR/ilastik-build-Linux" ]; then
+    git clone https://github.com/ilastik/ilastik-build-Linux.git
+else
+    cd ilastik-build-Linux && git pull && cd -
+fi
+
 mkdir -p build
 cd /home/vagrant
+
+echo "export BUILDEM_DIR=$BUILDEM_DIR" >> /home/vagrant/.bashrc
 
 echo "Writing lazyflow config file"
 mkdir -p ~/.lazyflow
@@ -99,7 +116,12 @@ echo "[verbosity]" > ~/.lazyflow/config
 echo "deprecation_warnings = false" >> ~/.lazyflow/config
 
 echo "Downloading real-world test data"
-git clone http://github.com/ilastik/ilastik_testdata /tmp/real_test_data || (cd /tmp/real_test_data && git pull && cd -)
+TEST_DATA_DIR=/tmp/real_test_data
+if [ ! -d "$TEST_DATA_DIR" ]; then
+    git clone http://github.com/ilastik/ilastik_testdata $TEST_DATA_DIR
+else
+    cd $TEST_DATA_DIR && git pull origin master && cd -
+fi
 
 ################
 # Build script #
