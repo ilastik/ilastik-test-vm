@@ -142,6 +142,8 @@ END_BUILD_SCRIPT
 cat <<END_TEST_SCRIPT > run_all_ilastik_tests.sh
 #!/bin/bash
 
+set -e # Exit on first failure.
+
 if [[ "\\$1" == "--use-xvfb" ]]
 then
     echo "Using X Virtual Frame Buffer for GUI tests."
