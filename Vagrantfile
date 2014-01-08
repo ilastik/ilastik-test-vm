@@ -160,7 +160,9 @@ export PATH=\\$BUILDEM_DIR/bin:\\$PATH
 # Update repo to latest checkpoint
 # (This updates lazyflow, volumina, and ilastik)
 cd \\$BUILDEM_DIR/src/ilastik
-git pull origin master
+# Pull from ilastik github account, not janelia-flyem
+git remote add ilastik https://github.com/ilastik/ilastik-meta || : # no-op to avoid exit due to set -e
+git pull ilastik master
 git submodule update --init --recursive
 
 # Run tests
