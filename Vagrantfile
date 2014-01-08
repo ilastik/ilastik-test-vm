@@ -108,7 +108,10 @@ fi
 mkdir -p build
 cd /home/vagrant
 
+echo "" >> /home/vagrant/.bashrc
+echo "# Automatically activate the BuildEM environment, but ignore errors if it doesn't exist yet." >> /home/vagrant/.bashrc
 echo "export BUILDEM_DIR=$BUILDEM_DIR" >> /home/vagrant/.bashrc
+echo "source $BUILDEM_DIR/bin/setenv_ilastik_gui.sh 2> /dev/null" >> /home/vagrant/.bashrc
 
 echo "Writing lazyflow config file"
 mkdir -p ~/.lazyflow
