@@ -134,7 +134,7 @@ echo "[verbosity]" > ~/.lazyflow/config
 echo "deprecation_warnings = false" >> ~/.lazyflow/config
 
 echo "Downloading real-world test data"
-TEST_DATA_DIR=/tmp/real_test_data
+TEST_DATA_DIR=/home/vagrant/real_test_data
 if [ ! -d "$TEST_DATA_DIR" ]; then
     git clone http://github.com/ilastik/ilastik_testdata $TEST_DATA_DIR
 else
@@ -195,7 +195,7 @@ nosetests .
 cd -
 
 echo "Generating synthetic test data"
-python ilastik/tests/bin/generate_test_data.py /tmp/test_data
+python ilastik/tests/bin/generate_test_data.py /home/vagrant/fake_test_data
 
 cd ilastik/tests
 echo "Running ilastik unit tests"
