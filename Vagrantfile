@@ -160,49 +160,64 @@ END_BUILD_SCRIPT
 cat <<END_TEST_SCRIPT > run_all_ilastik_tests.sh
 #!/bin/bash
 
-set -e # Exit on first failure.
-
+using_xvfb=0
 if [[ "\\$1" == "--use-xvfb" ]]
 then
     echo "Using X Virtual Frame Buffer for GUI tests."
-    echo 'type "sh -e /etc/init.d/xvfb stop" to disable.'
     export DISPLAY=:99.0
     sh -e /etc/init.d/xvfb start
+    using_xvfb=1
 fi
 
-# Set up env
-export BUILDEM_DIR=$BUILDEM_DIR
-source \\$BUILDEM_DIR/bin/setenv_ilastik_gui.sh
-export PATH=\\$BUILDEM_DIR/bin:\\$PATH
+# Run the test in a subshell (using the parens), 
+#  so we can clean up afterwards if there was a failure.
+(
+    set -e # Exit on first failure.
+    
+    # Set up env
+    export BUILDEM_DIR=$BUILDEM_DIR
+    source \\$BUILDEM_DIR/bin/setenv_ilastik_gui.sh
+    export PATH=\\$BUILDEM_DIR/bin:\\$PATH
+    
+    # Update repo to latest checkpoint
+    # (This updates lazyflow, volumina, and ilastik)
+    cd \\$BUILDEM_DIR/src/ilastik
+    # Pull from ilastik github account, not janelia-flyem
+    git remote add ilastik https://github.com/ilastik/ilastik-meta || : # no-op to avoid exit due to set -e
+    git pull ilastik master
+    git submodule update --init --recursive
+    
+    # Run tests
+    echo "Running lazyflow tests...."
+    cd lazyflow/tests
+    nosetests .
+    cd -
+    
+    echo "Running volumina tests...."
+    cd volumina/tests
+    nosetests .
+    cd -
+    
+    echo "Generating synthetic test data"
+    python ilastik/tests/bin/generate_test_data.py /home/vagrant/fake_test_data
+    
+    cd ilastik/tests
+    echo "Running ilastik unit tests"
+    ./run_each_unit_test.sh
+    echo "Running ilastik recorded GUI tests"
+    ./run_recorded_tests.sh
+    cd ../..
+)
+exit_code=\\$?
 
-# Update repo to latest checkpoint
-# (This updates lazyflow, volumina, and ilastik)
-cd \\$BUILDEM_DIR/src/ilastik
-# Pull from ilastik github account, not janelia-flyem
-git remote add ilastik https://github.com/ilastik/ilastik-meta || : # no-op to avoid exit due to set -e
-git pull ilastik master
-git submodule update --init --recursive
+# Cleanup: Disable xvfb, then return with the subshell exit code.
+if [[ \\$using_xvfb -eq 1 ]]
+then
+    echo "Disabling xvfb"
+    sh -e /etc/init.d/xvfb stop
+fi
+exit \\$exit_code
 
-# Run tests
-echo "Running lazyflow tests...."
-cd lazyflow/tests
-nosetests .
-cd -
-
-echo "Running volumina tests...."
-cd volumina/tests
-nosetests .
-cd -
-
-echo "Generating synthetic test data"
-python ilastik/tests/bin/generate_test_data.py /home/vagrant/fake_test_data
-
-cd ilastik/tests
-echo "Running ilastik unit tests"
-./run_each_unit_test.sh
-echo "Running ilastik recorded GUI tests"
-./run_recorded_tests.sh
-cd ../..
 END_TEST_SCRIPT
 #################
 
