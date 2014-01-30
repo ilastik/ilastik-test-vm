@@ -149,7 +149,7 @@ cat <<END_BUILD_SCRIPT > build_ilastik.sh
 set -e
 cd $BUILDEM_DIR/build
 cmake ../ilastik-build-Linux -DBUILDEM_DIR=$BUILDEM_DIR -DILASTIK_VERSION=master
-make -j4
+make "\\$@"
 # make package
 END_BUILD_SCRIPT
 ################
@@ -160,14 +160,29 @@ END_BUILD_SCRIPT
 cat <<END_TEST_SCRIPT > run_all_ilastik_tests.sh
 #!/bin/bash
 
-using_xvfb=0
-if [[ "\\$1" == "--use-xvfb" ]]
-then
-    echo "Using X Virtual Frame Buffer for GUI tests."
-    export DISPLAY=:99.0
-    sh -e /etc/init.d/xvfb start
-    using_xvfb=1
-fi
+USE_XVFB=0
+SKIP_ALL_GUI_TESTS=0
+SKIP_RECORDED_GUI_TESTS=0
+
+for arg in \\$@
+do
+    case \\$arg in
+        "--use-xvfb")
+            echo "Using X Virtual Frame Buffer for GUI tests."
+            export DISPLAY=:99.0
+            sh -e /etc/init.d/xvfb start
+            USE_XVFB=1
+            ;;
+        "--skip-gui-tests")
+            echo "Skipping all GUI tests."
+            SKIP_ALL_GUI_TESTS=1
+            ;;
+        "--skip-recorded-gui-tests")
+            echo "Skipping recorded GUI tests."
+            SKIP_RECORDED_GUI_TESTS=1
+            ;;
+    esac
+done
 
 # Run the test in a subshell (using the parens), 
 #  so we can clean up afterwards if there was a failure.
@@ -203,15 +218,21 @@ fi
     
     cd ilastik/tests
     echo "Running ilastik unit tests"
-    ./run_each_unit_test.sh
-    echo "Running ilastik recorded GUI tests"
-    ./run_recorded_tests.sh
+    SKIP_GUI_TESTS=\\$SKIP_ALL_GUI_TESTS ./run_each_unit_test.sh
+    
+    if [ \\$SKIP_ALL_GUI_TESTS -eq 0 -a \\$SKIP_RECORDED_GUI_TESTS -eq 0 ]; then
+        echo "Running ilastik recorded GUI tests"
+        ./run_recorded_tests.sh
+    else
+        echo "SKIPPING RECORDED TESTS"
+    fi
+
     cd ../..
 )
 exit_code=\\$?
 
 # Cleanup: Disable xvfb, then return with the subshell exit code.
-if [[ \\$using_xvfb -eq 1 ]]
+if [[ \\$USE_XVFB -eq 1 ]]
 then
     echo "Disabling xvfb"
     sh -e /etc/init.d/xvfb stop
