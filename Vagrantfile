@@ -202,6 +202,12 @@ done
     git pull ilastik master
     git submodule update --init --recursive
     
+    # Update all 3 repos to the latest commit, even though 
+    #  that may not be the commit specified by the meta-repo.
+    cd volumina && git checkout master && git pull && cd -
+    cd lazyflow && git checkout master && git pull && cd -
+    cd ilastik && git checkout master && git pull && cd -
+    
     # Run tests
     echo "Running lazyflow tests...."
     cd lazyflow/tests
