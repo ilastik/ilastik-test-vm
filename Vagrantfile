@@ -4,14 +4,11 @@
 ###################################################################
 ###################################################################
 # Root provisioning
+# (Vagrant runs these commands are run as the root user)
 ###################################################################
 ###################################################################
 $root_provision_script = <<END_ROOT_PROVISIONING
 echo "ROOT PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
-
-#
-# the following section runs as user 'root'
-#
 
 apt-get update
 
@@ -41,6 +38,17 @@ apt-get install -y libxcursor-dev
 apt-get install -y libxrandr-dev
 apt-get install -y libxinerama-dev
 
+# XVFB allows us to run GUI tests in a virtual screen
+apt-get install -y xvfb
+
+# Fluxbox is a light-weight window manager, 
+#  which we use during headless GUI tests (with xvfb)
+apt-get install -y fluxbox
+
+# The user can manipulate the "headless" screen 
+#  by connecting to it via vnc.
+apt-get install -y x11vnc
+
 # Hudson compatibility
 # Java is needed so this VM can run as a hudson slave
 apt-get install -y openjdk-7-jre
@@ -51,36 +59,6 @@ HUDSON_REMOTE_FS_ROOT=/var/hudson
 mkdir -p $HUDSON_REMOTE_FS_ROOT
 chmod 777 $HUDSON_REMOTE_FS_ROOT
 
-# XVFB allows us to run GUI tests in a virtual screen
-apt-get install -y xvfb
-
-# Create xvfb launch script (copied from the Travis 32-bit VM)
-cat <<END_XVFB_LAUNCH > /etc/init.d/xvfb
-XVFB=/usr/bin/Xvfb
-XVFBARGS=":99 -ac -screen 0 1024x768x16"
-PIDFILE=/tmp/cucumber_xvfb_99.pid
-case "\\$1" in
-  start)
-    echo -n "Starting virtual X frame buffer: Xvfb"
-    /sbin/start-stop-daemon --start --quiet --pidfile \\$PIDFILE --make-pidfile --background --exec \\$XVFB -- \\$XVFBARGS
-    echo "."
-    ;;
-  stop)
-    echo -n "Stopping virtual X frame buffer: Xvfb"
-    /sbin/start-stop-daemon --stop --quiet --pidfile \\$PIDFILE
-    rm -f \\$PIDFILE
-    echo "."
-    ;;
-  restart)
-    \\$0 stop
-    \\$0 start
-    ;;
-  *)
-  echo "Usage: /etc/init.d/xvfb {start|stop|restart}"
-  exit 1
-esac
-exit 0
-END_XVFB_LAUNCH
 echo "ROOT PROVISION SCRIPT DONE"
 END_ROOT_PROVISIONING
 ###################################################################
@@ -89,7 +67,8 @@ END_ROOT_PROVISIONING
 
 ###################################################################
 ###################################################################
-# Non-root provisioning #
+# Non-root provisioning
+# (Vagrant runs these commands as the vagrant user)
 ###################################################################
 ###################################################################
 $nonroot_provision_script = <<END_NONROOT_PROVISIONING
@@ -108,6 +87,10 @@ fi
 mkdir -p build
 cd /home/vagrant
 
+
+##########################################################
+# Edit .bashrc to activate BuildEM environment on login. #
+##########################################################
 # This is a little tricky.
 # We mark the end of the .bashrc script to indicate the start of the 
 #  auto-generated portion we are about to write.
@@ -128,11 +111,17 @@ echo "# Automatically activate the BuildEM environment, but ignore errors if it 
 echo "export BUILDEM_DIR=$BUILDEM_DIR" >> /home/vagrant/.bashrc
 echo "source $BUILDEM_DIR/bin/setenv_ilastik_gui.sh 2> /dev/null" >> /home/vagrant/.bashrc
 
+###################
+# lazyflow config # 
+###################
 echo "Writing lazyflow config file"
 mkdir -p ~/.lazyflow
 echo "[verbosity]" > ~/.lazyflow/config
 echo "deprecation_warnings = false" >> ~/.lazyflow/config
 
+######################
+# Download test data #
+######################
 echo "Downloading real-world test data"
 TEST_DATA_DIR=/home/vagrant/real_test_data
 if [ ! -d "$TEST_DATA_DIR" ]; then
@@ -141,9 +130,67 @@ else
     cd $TEST_DATA_DIR && git pull origin master && cd -
 fi
 
-################
-# Build script #
-################
+#########################################################
+# Write headless display activation/deactivation script #
+#########################################################
+cat <<END_HEADLESS_DISPLAY_CONTROL > headless_display_control.sh
+
+XVFB=/usr/bin/Xvfb
+XVFB_ARGS="\\$DISPLAY -ac -screen 0 1024x768x16"
+XVFB_PIDFILE=/tmp/headless_setup_xvfb.pid
+
+FLUXBOX=/usr/bin/fluxbox
+FLUXBOX_ARGS="-display \\$DISPLAY"
+FLUXBOX_PIDFILE="/tmp/headless_setup_fluxbox.pid"
+
+X11VNC=/usr/bin/x11vnc
+X11VNC_ARGS="-rfbport 5900"
+X11VNC_PIDFILE="/tmp/headless_setup_x11vnc.pid"
+
+case "\\$1" in
+  start)
+    echo "Activating headless environment on current DISPLAY: \\$DISPLAY"
+    echo "Starting virtual X frame buffer: Xvfb"
+    /sbin/start-stop-daemon --start --pidfile \\$XVFB_PIDFILE --make-pidfile --background --exec \\$XVFB -- \\$XVFB_ARGS
+    
+    echo "Starting fluxbox window manager"
+    /sbin/start-stop-daemon --start --pidfile \\$FLUXBOX_PIDFILE --make-pidfile --background --exec \\$FLUXBOX -- \\$FLUXBOX_ARGS
+
+    echo "Starting x11vnc server on port 5900, which is forwarded to the host at 13900."
+    /sbin/start-stop-daemon --start --pidfile \\$X11VNC_PIDFILE --make-pidfile --background --exec \\$X11VNC -- \\$X11VNC_ARGS
+    echo "To view the guest's virtual frame buffer from your host machine, connect your vnc viewer to localhost:13900, DISPLAY=\\$DISPLAY"
+
+    echo "Running the following processes:"    
+    top -b -n1 | grep "\\(Xvfb\\)\\|\\(fluxbox\\)\\|\\(x11vnc\\)"
+    ;;
+  stop)
+    echo "Stopping x11vnc server"
+    /sbin/start-stop-daemon --stop --pidfile \\$X11VNC_PIDFILE
+    rm -f \\$X11VNC_PIDFILE
+
+    echo "Stopping fluxbox window manager"
+    /sbin/start-stop-daemon --stop --pidfile \\$FLUXBOX_PIDFILE
+    rm -f \\$FLUXBOX_PIDFILE
+
+    echo "Stopping virtual X frame buffer: Xvfb"
+    /sbin/start-stop-daemon --stop --pidfile \\$XVFB_PIDFILE
+    rm -f \\$XVFB_PIDFILE
+    ;;
+  restart)
+    \\$0 stop
+    \\$0 start
+    ;;
+  *)
+
+  echo "Usage: \\$0 {start|stop|restart}"
+  exit 1
+esac
+exit 0
+END_HEADLESS_DISPLAY_CONTROL
+
+######################
+# Write build script #
+######################
 cat <<END_BUILD_SCRIPT > build_ilastik.sh
 #!/bin/bash
 set -e
@@ -154,9 +201,9 @@ make "\\$@"
 END_BUILD_SCRIPT
 ################
 
-#################
-### All Tests ###
-#################
+#####################
+# Write test script #
+#####################
 cat <<END_TEST_SCRIPT > run_all_ilastik_tests.sh
 #!/bin/bash
 
@@ -164,22 +211,13 @@ USE_XVFB=0
 SKIP_ALL_GUI_TESTS=0
 SKIP_RECORDED_GUI_TESTS=0
 
-#
-# TODO: Add these commands to the xvfb case:
-#
-# Xvfb :1 -screen 0 1024x768x16 &
-# fluxbox -display :1 &
-#
-# OPTIONALLY:
-# x11vnc -rfbport 5900 &
-
 for arg in \\$@
 do
     case \\$arg in
         "--use-xvfb")
-            echo "Using X Virtual Frame Buffer for GUI tests."
-            export DISPLAY=:99.0
-            sh -e /etc/init.d/xvfb start
+            echo "Activating headless environment..."
+            export DISPLAY=:1
+            sh -e /home/vagrant/headless_display_control.sh start
             USE_XVFB=1
             ;;
         "--skip-gui-tests")
@@ -249,8 +287,8 @@ exit_code=\\$?
 # Cleanup: Disable xvfb, then return with the subshell exit code.
 if [[ \\$USE_XVFB -eq 1 ]]
 then
-    echo "Disabling xvfb"
-    sh -e /etc/init.d/xvfb stop
+    echo "Deactivating headless environment."
+    sh -e /home/vagrant/headless_display_control.sh stop
 fi
 exit \\$exit_code
 
@@ -262,8 +300,11 @@ END_NONROOT_PROVISIONING
 ###################################################################
 ###################################################################
 
+
+###################################################################
 ###################################################################
 ## Vagrant Config
+###################################################################
 ###################################################################
 Vagrant.configure("2") do |config|
   # Every Vagrant virtual environment requires a box to build off of.
