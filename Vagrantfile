@@ -164,6 +164,15 @@ USE_XVFB=0
 SKIP_ALL_GUI_TESTS=0
 SKIP_RECORDED_GUI_TESTS=0
 
+#
+# TODO: Add these commands to the xvfb case:
+#
+# Xvfb :1 -screen 0 1024x768x16 &
+# fluxbox -display :1 &
+#
+# OPTIONALLY:
+# x11vnc -rfbport 5900 &
+
 for arg in \\$@
 do
     case \\$arg in
@@ -293,6 +302,7 @@ Vagrant.configure("2") do |config|
   # accessing "localhost:8080" will access port 80 on the guest machine.
   # config.vm.network :forwarded_port, guest: 80, host: 8080
   config.vm.network :forwarded_port, guest: 22, host: 8022
+  config.vm.network :forwarded_port, guest: 5900, host: 13900
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
