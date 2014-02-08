@@ -136,7 +136,7 @@ fi
 cat <<END_HEADLESS_DISPLAY_CONTROL > headless_display_control.sh
 
 XVFB=/usr/bin/Xvfb
-XVFB_ARGS="\\$DISPLAY -ac -screen 0 1024x768x16"
+XVFB_ARGS="\\$DISPLAY -ac -screen 0 1280x1024x24"
 XVFB_PIDFILE=/tmp/headless_setup_xvfb.pid
 
 FLUXBOX=/usr/bin/fluxbox
@@ -149,6 +149,17 @@ X11VNC_PIDFILE="/tmp/headless_setup_x11vnc.pid"
 
 case "\\$1" in
   start)
+    # Check for errors...
+    if [[ -z "\\$DISPLAY" ]]; then
+        echo "DISPLAY environment variable is not set. Please set one, e.g. DISPLAY=:1"
+        exit 1
+    fi
+    
+    if \\`echo \\$DISPLAY | grep -q localhost\\`; then
+        echo "Please set your DISPLAY environment variable for the virtual buffer, e.g. DISPLAY=:1"
+        exit 1
+    fi
+
     echo "Activating headless environment on current DISPLAY: \\$DISPLAY"
     echo "Starting virtual X frame buffer: Xvfb"
     /sbin/start-stop-daemon --start --pidfile \\$XVFB_PIDFILE --make-pidfile --background --exec \\$XVFB -- \\$XVFB_ARGS
