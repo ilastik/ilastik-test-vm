@@ -228,7 +228,7 @@ do
         "--use-xvfb")
             echo "Activating headless environment..."
             export DISPLAY=:0
-            sh -e /home/vagrant/headless_display_control.sh start
+            bash -e /home/vagrant/headless_display_control.sh start
             USE_XVFB=1
             ;;
         "--skip-gui-tests")
@@ -299,7 +299,7 @@ exit_code=\\$?
 if [[ \\$USE_XVFB -eq 1 ]]
 then
     echo "Deactivating headless environment."
-    sh -e /home/vagrant/headless_display_control.sh stop
+    bash -e /home/vagrant/headless_display_control.sh stop
 fi
 exit \\$exit_code
 
