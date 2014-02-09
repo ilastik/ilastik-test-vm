@@ -151,12 +151,12 @@ case "\\$1" in
   start)
     # Check for errors...
     if [[ -z "\\$DISPLAY" ]]; then
-        echo "DISPLAY environment variable is not set. Please set one, e.g. DISPLAY=:1"
+        echo "DISPLAY environment variable is not set. Please set one, e.g. DISPLAY=:0"
         exit 1
     fi
     
     if \\`echo \\$DISPLAY | grep -q localhost\\`; then
-        echo "Please set your DISPLAY environment variable for the virtual buffer, e.g. DISPLAY=:1"
+        echo "Please set your DISPLAY environment variable for the virtual buffer, e.g. DISPLAY=:0"
         exit 1
     fi
 
@@ -227,7 +227,7 @@ do
     case \\$arg in
         "--use-xvfb")
             echo "Activating headless environment..."
-            export DISPLAY=:1
+            export DISPLAY=:0
             sh -e /home/vagrant/headless_display_control.sh start
             USE_XVFB=1
             ;;
