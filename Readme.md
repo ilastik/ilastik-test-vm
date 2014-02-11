@@ -63,16 +63,13 @@ Connect to the VM:
 
 You are now logged in to the VM (user/pass: vagrant/vagrant).  
 
-Troubleshooting
----------------
+Activate the virtual display
+----------------------------
 
-If that fails, you may need to enable X11 forwarding on your host OS.  For example, on Ubuntu, check the settings in `/etc/ssh/ssh_config`.
-If X11 forwarding is enabled, you should be able to launch simple X11 apps from the VM.
+    ./virtual_display_control.sh start
 
-For example:
-
-    sudo apt-get install x11-apps   # password: vagrant
-    xclock
+The above command starts a VNC server on port 5900, which is accessible on port 13900 of your host machine.  
+On your host machine, use a VNC Client (such as VNC Viewer) to localhost::13900.
 
 Build ilastik
 -------------
@@ -91,18 +88,14 @@ Once you've completed the full BuildEM build, ilastik can be executed from the V
     # Log in to the VM
     vagrant ssh
     
-    # Activate the BuildEM binaries
-    source ilastik-build/bin/setenv_ilastik_gui.sh
-    
     # Run ilastik
-    cd ilastik-build/src/ilastik
-    ./ilastik/ilastik.py    
+    ilastik_gui
 
 Run the unit/regression tests
 -----------------------------
 
     vagrant ssh
-    bash run_all_ilastik_tests.sh
+    ./run_all_ilastik_tests.sh --use-xvfb [--skip-gui-tests]
 
 Recorded GUI regression tests
 =============================
@@ -112,9 +105,10 @@ One benefit of running ilastik from a virtual machine is that you can create GUI
 Record a new test
 -----------------
 
+First, make sure you've activated the virtual display (see above), and connected to it with a VNC Viewer from your host machine.
 To record an ilastik gui test case, use the `--start_recording` option:
 
-    ./ilastik/ilastik.py --start_recording
+    ilastik_gui --start_recording
 
 Add comments to the test as you go, so it's easy to see what you were doing if the test case starts to fail in the future.
 For test data to use with your test case, look in the VM's `/tmp/test_data` directory.
@@ -122,7 +116,7 @@ When you are finished, save your test somewhere in the `ilastik/tests/recorded_t
 
 To play back your test case, use the `--playback_script` parameter:
 
-    ./ilastik/ilastik.py --playback_script=ilastik/tests/recorded_test_cases/my_recording.py
+    ilatik_gui --playback_script=ilastik/tests/recorded_test_cases/my_recording.py
 
 To include your new test case in the ilastik regression test suite, be sure to `commit` and `push` it back up to the main ilastik repo!
 If your test case exhibits a bug in ilastik that you want to share with the development team, you can open an issue in the ilastik [github issue tracker](http://github.com/ilastik/ilastik/issues).
@@ -136,15 +130,12 @@ It will be much easier to see what's going wrong when your test case fails some 
 
 Don't interfere with tests during playback.  Stray mouse movements, etc. can still affect the app during playback.
 
-Hopefully all of our X11 servers use the same font settings by default.  If your X11 server uses a different font size, 
-then the test cases you get from other people may not pass on your machine.  (Some mouse clicks will miss their targets.)
-
 Avoid relying on details that may not be consistent between test runs.
 For example, it is usually best to select your test data by typing the path into the file browser dialog (don't use the mouse).
 If the playback environment's file browser doesn't start in the same directory you started in when you recorded the test, 
 then your mouse clicks won't mean the same thing!
 
-The recording system relies on QObject.objectName() to locate widgets within the widget hierarchy.
+The recording system relies on `QObject.objectName()` to locate widgets within the widget hierarchy.
 For the most part, you don't need to know or worry about the details here.
 However, you must make sure that any top-level widgets you create (e.g. custom dialogs) have unique names.
 If you fail to do this, you may have trouble playing back test cases involving your dialog.
@@ -153,8 +144,7 @@ For example:
 
     class MyDialog(QDialog):
         def __init__(parent):
-            QDialog.__init__(parent)
-            self.setObjectName("MyUniqueName")
+            QDialog.__init__(parent, objectName="MyUniqueName")
 
 Suspending the VM
 =================

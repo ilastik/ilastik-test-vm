@@ -110,6 +110,8 @@ echo "# It will be deleted the next time 'vagrant provision' is executed." >> /h
 echo "# Automatically activate the BuildEM environment, but ignore errors if it doesn't exist yet." >> /home/vagrant/.bashrc
 echo "export BUILDEM_DIR=$BUILDEM_DIR" >> /home/vagrant/.bashrc
 echo "source $BUILDEM_DIR/bin/setenv_ilastik_gui.sh 2> /dev/null" >> /home/vagrant/.bashrc
+echo "# Set the DISPLAY to :0, so VNC clients can connect to our virtual display"
+echo "export DISPLAY=:0" >> /home/vagrant/.bashrc
 
 ###################
 # lazyflow config # 
@@ -133,7 +135,7 @@ fi
 #########################################################
 # Write headless display activation/deactivation script #
 #########################################################
-cat <<END_HEADLESS_DISPLAY_CONTROL > headless_display_control.sh
+cat <<END_VIRTUAL_DISPLAY_CONTROL > virtual_display_control.sh
 
 XVFB=/usr/bin/Xvfb
 XVFB_ARGS="\\$DISPLAY -ac -screen 0 1280x1024x24"
@@ -197,7 +199,9 @@ case "\\$1" in
   exit 1
 esac
 exit 0
-END_HEADLESS_DISPLAY_CONTROL
+END_VIRTUAL_DISPLAY_CONTROL
+############################
+chmod +x virtual_display_control.sh
 
 ######################
 # Write build script #
@@ -211,6 +215,7 @@ make "\\$@"
 # make package
 END_BUILD_SCRIPT
 ################
+chmod +x build_ilastik.sh
 
 #####################
 # Write test script #
@@ -228,7 +233,7 @@ do
         "--use-xvfb")
             echo "Activating headless environment..."
             export DISPLAY=:0
-            bash -e /home/vagrant/headless_display_control.sh start
+            bash -e /home/vagrant/virtual_display_control.sh start
             USE_XVFB=1
             ;;
         "--skip-gui-tests")
@@ -299,12 +304,13 @@ exit_code=\\$?
 if [[ \\$USE_XVFB -eq 1 ]]
 then
     echo "Deactivating headless environment."
-    bash -e /home/vagrant/headless_display_control.sh stop
+    bash -e /home/vagrant/virtual_display_control.sh stop
 fi
 exit \\$exit_code
 
 END_TEST_SCRIPT
 #################
+chmod +x run_all_ilastik_tests.sh
 
 echo "NONROOT PROVISION SCRIPT DONE"
 END_NONROOT_PROVISIONING
@@ -326,7 +332,7 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = "ilastikci"
 
   # Enable x11 forwarding (as if using ssh -X)
-  config.ssh.forward_x11 = true
+  ###config.ssh.forward_x11 = true
 
   # VirtualBox settings
   config.vm.provider :virtualbox do |vb|
