@@ -81,7 +81,7 @@ BUILDEM_DIR=`pwd`
 if [ ! -d "$BUILDEM_DIR/ilastik-build-Linux" ]; then
     git clone https://github.com/ilastik/ilastik-build-Linux.git
 else
-    cd ilastik-build-Linux && git pull && cd -
+    cd ilastik-build-Linux && git pull origin master && cd -
 fi
 
 mkdir -p build
@@ -144,7 +144,7 @@ FLUXBOX_ARGS="-display \\$DISPLAY"
 FLUXBOX_PIDFILE="/tmp/headless_setup_fluxbox.pid"
 
 X11VNC=/usr/bin/x11vnc
-X11VNC_ARGS="-rfbport 5900"
+X11VNC_ARGS="-rfbport 5900 -shared -forever"
 X11VNC_PIDFILE="/tmp/headless_setup_x11vnc.pid"
 
 case "\\$1" in
@@ -262,9 +262,9 @@ done
     
     # Update all 3 repos to the latest commit, even though 
     #  that may not be the commit specified by the meta-repo.
-    cd volumina && git checkout master && git pull && git submodule update --init --recursive && cd -
-    cd lazyflow && git checkout master && git pull && git submodule update --init --recursive && cd -
-    cd ilastik  && git checkout master && git pull && git submodule update --init --recursive && cd -
+    cd volumina && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
+    cd lazyflow && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
+    cd ilastik  && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
     
     # Run tests
     echo "Running lazyflow tests...."
