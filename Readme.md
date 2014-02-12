@@ -12,10 +12,9 @@ Prerequisites
 
 - Install [VirtualBox][]
 - Install [vagrant][] (You might be able to install vagrant via a package manager like `apt-get`, but make sure you get at least v1.4)
-- You need an X11 server.
- * On Linux, this is built-in.
- * On Mac, the X11.app that ships with OS X will suffice.
- * On Windows, the process is [a little more complicated](https://cc.jlab.org/windows/X11onWindows).
+- Install a VNC Client (if you don't have one already)
+ * Recommended: Real VNC [VNC Viewer](http://www.realvnc.com/download/viewer)
+ * On Mac, a program called "Chicken of the VNC" is not recommended (it seems to drop some key strokes)
 
 [vagrant]: http://www.vagrantup.com
 [VirtualBox]: http://www.virtualbox.org
@@ -46,7 +45,6 @@ After the download is complete, it will be booted and "provisioned".  The provis
 * Writes, but does not execute, a script to build ilastik and all dependencies (`/home/vagrant/build_ilastik.sh`)
 * Writes, but does not execute, a script to run all tests in an ilastik build (including lazyflow and volumina unit tests)
 * Enables port-forwarding for ssh from host port 8022 to VM port 22
-* Enables X11 forwarding over ssh (like ssh -X)
 * Specifies how many CPUs to allocate to the VM (4 by default)
 
 After the first boot, the provision script will not be auto-executed during the `vagrant up` process.
