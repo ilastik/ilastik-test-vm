@@ -27,6 +27,9 @@ apt-get install -y libgl1-mesa-dev
 apt-get install -y libxt-dev
 apt-get install -y libxml2-dev
 
+# We need chrpath if we want to generate a redistributable binary package from this VM
+apt-get install chrpath
+
 # Since we'll use X11 for this VM, we must install these packages before building Qt.
 # See http://qt-project.org/doc/qt-4.8/requirements-x11.html
 # Note: Qt will *build* if some of these are omitted,
@@ -210,9 +213,10 @@ cat <<END_BUILD_SCRIPT > build_ilastik.sh
 #!/bin/bash
 set -e
 cd $BUILDEM_DIR/build
+
 cmake ../ilastik-build-Linux -DBUILDEM_DIR=$BUILDEM_DIR -DILASTIK_VERSION=master
 make "\\$@"
-# make package
+
 END_BUILD_SCRIPT
 ################
 chmod +x build_ilastik.sh
