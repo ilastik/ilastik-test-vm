@@ -39,7 +39,7 @@ apt-get install -y libxt-dev
 apt-get install -y libxml2-dev
 
 # We need chrpath if we want to generate a redistributable binary package from this VM
-apt-get install chrpath
+apt-get install -y chrpath
 
 # Since we'll use X11 for this VM, we must install these packages before building Qt.
 # See http://qt-project.org/doc/qt-4.8/requirements-x11.html
