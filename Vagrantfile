@@ -25,6 +25,12 @@ apt-get install -y mercurial
 apt-get install -y build-essential
 apt-get install -y gfortran
 
+# The python install process itself requires python, apparently.
+# Furthermore, there is a bug in the Ubuntu 12.04 setup:
+# http://stackoverflow.com/a/16224441/162094
+# This should update our version of python
+python install -y python
+
 # Dependencies of ilastik not included in BuildEM
 # (See BuildEM readme.)
 apt-get install -y libxext-dev
