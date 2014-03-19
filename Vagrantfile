@@ -12,7 +12,7 @@ echo "ROOT PROVISION SCRIPT STARTING (user="`whoami`", pwd="`pwd`")"
 
 # This VM uses Ubuntu 12.04, but we want to use a newer version of git.
 # This extra package repository allows us to install git 1.9.0
-apt-get install python-software-properties
+apt-get install -y python-software-properties
 add-apt-repository -y ppa:git-core/ppa
 
 apt-get update
