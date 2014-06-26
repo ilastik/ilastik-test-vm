@@ -4,7 +4,7 @@
 ###################################################################
 ###################################################################
 # Root provisioning
-# (Vagrant runs these commands are run as the root user)
+# (Vagrant runs these commands as the root user)
 ###################################################################
 ###################################################################
 $root_provision_script = <<END_ROOT_PROVISIONING
@@ -82,7 +82,7 @@ END_ROOT_PROVISIONING
 ###################################################################
 ###################################################################
 # Non-root provisioning
-# (Vagrant runs these commands as the vagrant user)
+# (Vagrant runs these commands as the non-root 'vagrant' user)
 ###################################################################
 ###################################################################
 $nonroot_provision_script = <<END_NONROOT_PROVISIONING
@@ -239,6 +239,7 @@ cat <<END_TEST_SCRIPT > run_all_ilastik_tests.sh
 #!/bin/bash
 
 USE_XVFB=0
+SKIP_GIT_UPDATE=0
 SKIP_ALL_GUI_TESTS=0
 SKIP_RECORDED_GUI_TESTS=0
 
@@ -250,6 +251,10 @@ do
             export DISPLAY=:0
             bash -e /home/vagrant/virtual_display_control.sh start
             USE_XVFB=1
+            ;;
+        "--skip-git-update")
+            echo "Skipping git update"
+            SKIP_GIT_UPDATE=1
             ;;
         "--skip-gui-tests")
             echo "Skipping all GUI tests."
@@ -272,19 +277,24 @@ done
     source \\$BUILDEM_DIR/bin/setenv_ilastik_gui.sh
     export PATH=\\$BUILDEM_DIR/bin:\\$PATH
     
-    # Update repo to latest checkpoint
-    # (This updates lazyflow, volumina, and ilastik)
     cd \\$BUILDEM_DIR/src/ilastik
-    # Pull from ilastik github account, not janelia-flyem
-    git remote add ilastik https://github.com/ilastik/ilastik-meta || : # no-op to avoid exit due to set -e
-    git pull ilastik master
-    git submodule update --init --recursive
+
+    if [[ \\$SKIP_GIT_UPDATE -eq 0 ]]
+    then
+        # Update repo to latest checkpoint
+        # (This updates lazyflow, volumina, and ilastik)
+
+        # Pull from ilastik github account, not janelia-flyem
+        git remote add ilastik https://github.com/ilastik/ilastik-meta || : # no-op to avoid exit due to set -e
+        git pull ilastik master
+        git submodule update --init --recursive
     
-    # Update all 3 repos to the latest commit, even though 
-    #  that may not be the commit specified by the meta-repo.
-    cd volumina && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
-    cd lazyflow && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
-    cd ilastik  && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
+        # Update all 3 repos to the latest commit, even though 
+        #  that may not be the commit specified by the meta-repo.
+        cd volumina && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
+        cd lazyflow && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
+        cd ilastik  && git checkout master && git pull origin master && git submodule update --init --recursive && cd -
+    fi
     
     # Run tests
     echo "Running lazyflow tests...."
